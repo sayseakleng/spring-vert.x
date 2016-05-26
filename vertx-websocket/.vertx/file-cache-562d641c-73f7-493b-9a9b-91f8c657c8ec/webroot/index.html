@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="ISO-8859-1">
+<title>Insert title here</title>
+</head>
+<body>
+
+	<div id="divConnect">
+	    <div class="loginDiv" style="margin-top: 20px;">
+	        <label>What is your name?</label><input type="text" id="txtName" />
+	        <button id="btnConnect">Join</button>
+	        <p id="response"></p>
+	    </div>
+	</div>
+	
+	<div id="divMessage" style="display:none">
+	    <div class="loginDiv" style="margin-top: 20px;">
+	        <label>Send us a text</label><input type="text" id="txtText" />
+	        <button id="btnSend">Send</button>
+	        <p id="response"></p>
+	    </div>
+	    <div id="divHistory">
+	    
+	    </div>
+	</div>
+</body>
+<script   src="https://code.jquery.com/jquery-1.12.3.min.js"   integrity="sha256-aaODHAgvwQW1bFOGXMeX+pC4PZIPsvn2h1sArYOhgXQ="   crossorigin="anonymous"></script>
+<script src="//cdn.jsdelivr.net/sockjs/1/sockjs.min.js"></script>
+
+<script>
+	var page = {
+		socket: null,
+		$divMessage: $("#divMessage"),
+		$divConnect: $("#divConnect"),
+		$txtName: $("#txtName"),
+		$txtText: $("#txtText"),
+		$divHistory: $("#divHistory"),
+		
+		init: function() {
+			page.bindEvent();
+		},
+		bindEvent: function() {
+			
+			$("#btnConnect").on( "click",
+				function() {
+					
+					var userId = page.$txtName.val();
+				
+					var socket = new WebSocket("ws://localhost:8181/websocket?userId=" + userId);
+					
+					
+					page.socket = socket;
+
+					socket.onmessage = function(event) {
+						var data = event.data;
+						if(data instanceof Blob) {
+							var reader = new FileReader();
+							reader.addEventListener("loadend", function() {
+								console.log("Received data from websocket: " + reader.result);
+								page.renderResponse(reader.result);
+							});
+							reader.readAsBinaryString(data);
+							//reader.readAsArrayBuffer(data);
+						}
+						else {
+							console.log("Received data from websocket: " + event.data);
+							page.renderResponse(event.data);
+						}
+					}
+
+					socket.onopen = function(event) {
+						console.log("connected...");
+						page.$divConnect.hide();
+						page.$divMessage.show();
+					};
+
+					socket.onclose = function(event) {
+						console.log("connection closed...");
+						page.$divConnect.show();
+						page.$divMessage.hide();
+					};
+			});
+			
+			$("#btnSend").on("click", function(){
+				var text = page.$txtText.val();
+				page.socket.send(text);
+			});
+			
+		},
+		
+		renderResponse: function(responseText){
+			page.$divHistory.append($("<div>").text(responseText));
+		}
+	};
+	$(document).ready(function() {
+		page.init();
+	});
+</script>
+</html>
